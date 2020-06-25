@@ -3,11 +3,15 @@ var bcrypt = require('bcryptjs');
 var jwt = require('jsonwebtoken');
 //Obtenemos la semilla del token
 var semilla = require('../config/config').SEMILLA;
+//google clientID
+var CLIENT_ID = require('../config/config').CLIENT_ID;
 var app = express();
 //importar esquema de usuario definido en models
 var Usuario = require('../models/usuario');
+const {OAuth2Client} = require('google-auth-library');
+const client = new OAuth2Client(CLIENT_ID);
 
-//Metodo de login
+//Metodo de login auth normal
 
 app.post('/', (req, res)=>{
     var body = req.body;
@@ -64,5 +68,97 @@ app.post('/', (req, res)=>{
 
 });//app.post
 
+
+//Auth con google
+async function verify(token) {
+    const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: CLIENT_ID,  // Specify the CLIENT_ID of the app that accesses the backend
+        // Or, if multiple clients access the backend:
+        //[CLIENT_ID_1, CLIENT_ID_2, CLIENT_ID_3]
+    });
+    const payload = ticket.getPayload();
+    // const userid = payload['sub'];
+    // If request specified a G Suite domain:
+    // const domain = payload['hd'];
+    return {
+        nombre:payload.name,
+        email:payload.email,
+        img:payload.picture,
+        perfil: payload.profile,
+        google: true
+    }
+}
+verify().catch(console.error);
+
+app.post('/google', async (req, res)=>{
+
+    let token = req.body.token;
+    let userGoogle = await verify(token).catch((err)=>{
+        return res.status(403).json({
+            ok:false,
+            mensaje:'Token invalido'
+        });
+    })
+
+
+    Usuario.findOne( { email:userGoogle.email }, (err, usuarioDB)=>{ 
+        if (err) {
+            res.status(500).json({
+                ok:false,
+                err: 'Error en db'
+            })
+        }
+
+        if (usuarioDB) {
+            if (usuarioDB.google ===  false) {
+                return res.status(400).json({
+                    ok:false,
+                    mensaje:'Este correo ya tiene una cuenta y una contraseña'
+                })
+            }else{
+                usuarioDb.password = ':)';
+                var token = jwt.sign({ usuario:usuarioDb }, semilla, {expiresIn: 14000});
+                res.status(200).json({
+                    ok:true,
+                    usuario: usuarioDB,
+                    token: token,
+                    mensaje:'Metodo login post google ok, login user'
+        
+                })//Res.status
+            }
+        }else{
+            //El usuario no existe hay que crearlo
+            var usuario = new Usuario();
+            usuario.nombre = userGoogle.nombre;
+            usuario.email = userGoogle.email;
+            usuario.img = userGoogle.img;
+            usuario.google = true;
+            usuario.password =':)';
+
+            usuario.save((err, usuarioDb)=>{
+                var token = jwt.sign({ usuario:usuarioDb }, semilla, {expiresIn: 14000})
+                
+                res.status(200).json({
+                    ok:true,
+                    usuario: usuarioDb,
+                    id: usuarioDb.id,
+                    token: token,
+                    expiredIn: 14000,
+                    mensaje:'Metodo login post ok, login user'
+                    
+                })//Res.status
+            })
+        }
+        
+    } )
+
+    // res.status(200).json({
+    //     ok:true,
+    //     userGoogle:userGoogle,
+    //     mensaje:'Metodo login post google ok, login user'
+        
+    // })//Res.status
+})
 
 module.exports = app;
