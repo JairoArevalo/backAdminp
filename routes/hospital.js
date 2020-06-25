@@ -1,25 +1,28 @@
+//Modelo o esquema DB importado creado en models
+
+var Hospital = require('../models/hospital');
+//librerias
 var express = require('express');
-var bcrypt = require('bcryptjs');
-var middelwareAuth = require('../middleware/auth')
 var app = express();
-//importar esquema de usuario definido en models
-var Usuario = require('../models/usuario');
+
+//Middleware para las validaciones un usuario debe estar autentificado para realizar
+//las opciones del crud
+
+var middelwareAuth = require('../middleware/auth');
+
+
 
 //Rutas
 
 //Se especifica el tipo get, la ruta y los parametros,
 // funcion find gracias a la libreria mongoos para realizar la consulta a mongodb
 
-
-app.get('/', (req, res, next)=>{
-    //Variable para la paginacion
+app.get('/',  ( req, res, next )=>{
     var desde = req.query.desde || 0;
     desde = Number(desde);
-
-
-    Usuario.find({}, 'nombre email img role')
-    .skip(desde)
-    .limit(10).exec( (err, usuarios)=>{
+    Hospital.find({}, 'nombre img usuario').populate('usuario', 'nombre email role')
+    .skip(desde).limit(10)
+    .exec( (err, hospitales)=>{
         //Accion que realiza si hay un error en la base de datos al realizar la peticion
         if (err) {
             return res.status(500).json({
@@ -28,32 +31,28 @@ app.get('/', (req, res, next)=>{
                 errors: err
             })
         } 
-        //La respuesta que se obtiene si la peticion es correcta
-        Usuario.count({}, (err, counter )=>{
+        //La respuesta que se obtiene si la peticion es correcta mas el conteo
+        Hospital.count({}, (err, counter)=>{
 
             res.status(200).json({
                 ok: true,
-                usuarios:usuarios,
-                total: counter,
-                mensaje: 'get de usuarios',
+                hospitales:hospitales,
+                total:counter,
+                mensaje: 'get de hospitales',
             });
         } )
+
         
     });
+} )
 
-    
-});
+
 
 
 //Peticiones que necesitan autentificacion
 
 
-
-
-
-
-
-//Crear un nuevo usuario metodo post ::
+//Crear un nuevo hospital metodo post ::
 //Trabajar enviando la peticion en el body como : x-www-form-urlencoded
 //usamos la libreria bodyparser que nos permite tomar directamente la informacion enviada y
 // evitarnos ese trabajo
@@ -62,29 +61,27 @@ app.post('/', middelwareAuth.verificaToken ,(req, res)=>{
     //leer el body enviado por el metodo post
     var body = req.body;
     //Crear variable modelo para recibir la info 
-    var usuario = new Usuario({
+    var hospital = new Hospital({
         nombre: body.nombre,
-        email: body.email,
-        password: bcrypt.hashSync(body.password, 10),
         img: body.img,
-        role: body.role
+        usuario: req.usuario._id
     });
     //guardar la info proveniente 
-    usuario.save( ( err, usuarioGuardado )=>{
+    hospital.save( ( err, hospitalGuardado )=>{
         //Manejo del error
         if (err) {
             return res.status(400).json({
                 ok:false,
                 errors: err,
-                mensaje:'Error al guardar usuarios en db'
+                mensaje:'Error al guardar hospital en db'
             })
         } 
         //respuesta al recurso creado
         res.status(201).json({
             ok: true,
-            body:usuario,
+            body:hospital,
             usuarioAdmin: req.usuario,
-            mensaje: 'Post de usuarios recurso creado',
+            mensaje: 'Post de hospitales, recurso creado',
         });
 
     });
@@ -92,14 +89,8 @@ app.post('/', middelwareAuth.verificaToken ,(req, res)=>{
     
 } );
 
-
-
-
-
-
-
-//Actualizar un usuario
-//Recibe obligatorio el id pasado por el url
+//Metodo put para editar
+//Recibe el id del hospital a editar
 
 app.put('/:id', middelwareAuth.verificaToken ,( req, res )=>{
     //Recibo el id del usuario que quiero editar
@@ -107,42 +98,42 @@ app.put('/:id', middelwareAuth.verificaToken ,( req, res )=>{
     var body = req.body;
     //Valido si existe algun usuario con ese id
 
-    Usuario.findById( id, ( err, usuario )=>{
+    Hospital.findById( id, ( err, hospital )=>{
         //Ocurrio un error 
         if (err) {
             return res.status(500).json({
                 ok:false,
-                mensaje:'Error al tratar de editar al usuario',
+                mensaje:'Error al tratar de editar el hospital',
                 errors: err
             })
         } 
         //No encontro al usuario con ese id
-        if (!usuario) {
+        if (!hospital) {
             return res.status(400).json({
                 ok:false,
-                mensaje:'El usuario con el id no existe' +id +'No encontrado' ,
+                mensaje:'El hospital con el id no existe' +id +'No encontrado' ,
                 errors: err
             });
         }
 
         //Se encontro al usuario, retorno para edicion
 
-        usuario.nombre = body.nombre;
-        usuario.email = body.email;
-        usuario.role = body.role;
+        hospital.nombre = body.nombre;
+        hospital.img = body.img;
+        hospital.id = req.usuario._id;
 
-        usuario.save( (err, usuarioGuardado)=>{
+        hospital.save( (err, hospitalGuardado)=>{
             if (err) {
                 return res.status(400).json({
                     ok:false,
-                    mensaje:'Error al actualizar al usuario',
+                    mensaje:'Error al actualizar el hospital',
                     errors: err
                 })
             } 
-            usuarioGuardado.password = ':)'
+            
             res.status(200).json({
                 ok: true,
-                usuario:usuarioGuardado,
+                hospital:hospitalGuardado,
                 usuarioAdmin: req.usuario,
                 mensaje: 'Put de usuarios editar usuario',
             });
@@ -151,21 +142,22 @@ app.put('/:id', middelwareAuth.verificaToken ,( req, res )=>{
     });
 });
 
-////Eliminar un usuario metodo delete por id
 
-app.delete( '/:id',middelwareAuth.verificaToken, ( req, res )=>{
+////Eliminar un hospital metodo delete por id
+
+app.delete( '/:id', middelwareAuth.verificaToken, ( req, res )=>{
     var id = req.params.id;
 
-    Usuario.findByIdAndRemove(id, ( err, usuarioBorrado )=>{
+    Hospital.findByIdAndRemove(id, ( err, hospitalBorrado )=>{
         if (err) {
             return res.status(500).json({
                 ok:false,
-                mensaje:'Error al eliminar usuario',
+                mensaje:'Error al eliminar hospital',
                 errors: err
             })
         } 
 
-        if (!usuarioBorrado) {
+        if (!hospitalBorrado) {
             return res.status(400).json({
                 ok:false,
                 mensaje:'Error al eliminar usuario, el usuario no existe',
@@ -175,9 +167,9 @@ app.delete( '/:id',middelwareAuth.verificaToken, ( req, res )=>{
         
         res.status(200).json({
             ok: true,
-            usuario: usuarioBorrado,
+            hospital: hospitalBorrado,
             usuarioAdmin: req.usuario,
-            mensaje: 'Delete de usuarios, usuario eliminado',
+            mensaje: 'Delete de hospital, hospital eliminado',
         });
 
     } )
