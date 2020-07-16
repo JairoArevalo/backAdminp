@@ -128,11 +128,11 @@ function SubirTipo(tipo, id, nombreArchivo, res) {
                     mensaje:'Ha ocurriodo un error: '+err
                 })
             }
-            var pathAnterior= `C:/Angular/AngularAd/BackendAdmin/uploads/medicos/${medico.img}`;
+            const pathViejo = `C:/Angular/AngularAd/BackendAdmin/uploads/medicos/${medico.img}`;
             
             //Verifica si existe una imagen previa del usuario o hospital
-            if (fs.existsSync(pathAnterior)) {
-                fs.unlinkSync(pathAnterior);
+            if (fs.existsSync(pathViejo)) {
+                fs.unlinkSync(pathViejo);
            
             }
             medico.img = nombreArchivo;

@@ -10,7 +10,7 @@ var app = express();
 var Usuario = require('../models/usuario');
 const {OAuth2Client} = require('google-auth-library');
 const client = new OAuth2Client(CLIENT_ID);
-
+var mdAuth = require('../middleware/auth');
 //Metodo de login auth normal
 
 app.post('/', (req, res)=>{
@@ -58,6 +58,7 @@ app.post('/', (req, res)=>{
             ok:true,
             usuario: usuarioDb,
             id: usuarioDb.id,
+            menu: obtenerMenu(usuarioDb.role),
             token: token,
             expiredIn: 14000,
             mensaje:'Metodo login post ok, login user'
@@ -70,26 +71,28 @@ app.post('/', (req, res)=>{
 
 
 //Auth con google
-async function verify(token) {
-    const ticket = await client.verifyIdToken({
-        idToken: token,
-        audience: CLIENT_ID,  // Specify the CLIENT_ID of the app that accesses the backend
-        // Or, if multiple clients access the backend:
-        //[CLIENT_ID_1, CLIENT_ID_2, CLIENT_ID_3]
-    });
-    const payload = ticket.getPayload();
-    // const userid = payload['sub'];
-    // If request specified a G Suite domain:
-    // const domain = payload['hd'];
-    return {
-        nombre:payload.name,
-        email:payload.email,
-        img:payload.picture,
-        perfil: payload.profile,
-        google: true
+    async function verify(token) {
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: CLIENT_ID,  // Specify the CLIENT_ID of the app that accesses the backend
+            // Or, if multiple clients access the backend:
+            //[CLIENT_ID_1, CLIENT_ID_2, CLIENT_ID_3]
+        });
+        const payload = ticket.getPayload();
+        // const userid = payload['sub'];
+        // If request specified a G Suite domain:
+        // const domain = payload['hd'];
+        return {
+            nombre:payload.name,
+            email:payload.email,
+            img:payload.picture,
+            perfil: payload.profile,
+            google: true
+        }
     }
-}
-verify().catch(console.error);
+    verify().catch(console.error);
+
+
 
 app.post('/google', async (req, res)=>{
 
@@ -117,12 +120,13 @@ app.post('/google', async (req, res)=>{
                     mensaje:'Este correo ya tiene una cuenta y una contraseña'
                 })
             }else{
-                usuarioDb.password = ':)';
-                var token = jwt.sign({ usuario:usuarioDb }, semilla, {expiresIn: 14000});
+                usuarioDB.password = ':)';
+                var token = jwt.sign({ usuario:usuarioDB }, semilla, {expiresIn: 14000});
                 res.status(200).json({
                     ok:true,
                     usuario: usuarioDB,
                     token: token,
+                    menu: obtenerMenu(usuarioDB.role) ,
                     mensaje:'Metodo login post google ok, login user'
         
                 })//Res.status
@@ -136,13 +140,14 @@ app.post('/google', async (req, res)=>{
             usuario.google = true;
             usuario.password =':)';
 
-            usuario.save((err, usuarioDb)=>{
-                var token = jwt.sign({ usuario:usuarioDb }, semilla, {expiresIn: 14000})
+            usuario.save((err, usuarioDB)=>{
+                var token = jwt.sign({ usuario:usuarioDB }, semilla, {expiresIn: 14000})
                 
                 res.status(200).json({
                     ok:true,
-                    usuario: usuarioDb,
-                    id: usuarioDb.id,
+                    usuario: usuarioDB,
+                    id: usuarioDB.id,
+                    menu: obtenerMenu(usuarioDB.rol),
                     token: token,
                     expiredIn: 14000,
                     mensaje:'Metodo login post ok, login user'
@@ -159,6 +164,56 @@ app.post('/google', async (req, res)=>{
     //     mensaje:'Metodo login post google ok, login user'
         
     // })//Res.status
+})
+
+
+//Obtener menú del ususario logueado
+
+
+function obtenerMenu(ROLE) {
+    menu =[
+        {
+          titulo:'Menu Principal',
+          icono:'mdi mdi-gauge',
+          submenu:[
+            { titulo:'Dashboard', url:'/dashboard'},
+            { titulo:'Progress', url:'/progress'},
+            { titulo:'Graficas', url:'/graficas1'},
+            { titulo:'Promesas', url:'/promesas'},
+            { titulo:'Rxjs', url:'/rxjs'}
+            
+          ]
+      
+        },
+        {
+          titulo:'Mantenimiento',
+          icono:'mdi mdi-folder-lock-open',
+          submenu:[
+            // {titulo: 'Usuarios', url:'/usuarios' },
+            {titulo: 'Medicos', url:'/medicos' },
+            {titulo: 'Hospitales', url:'/hospitales' }
+          ]
+        }
+    
+    ];
+
+    if (ROLE === 'ADMIN_ROLE') {
+        menu[1].submenu.unshift({titulo: 'Usuarios', url:'/usuarios' })
+    }
+
+    return menu
+}
+
+//Renovar el token
+
+app.get('/renuevaToken', mdAuth.verificaToken ,( req, res )=>{
+    
+    var token = jwt.sign({ usuario:req.usuario }, semilla, {expiresIn: 14000})
+    
+    res.status(200).json({
+         ok:true,
+         token:token
+     })
 })
 
 module.exports = app;

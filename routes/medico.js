@@ -169,4 +169,38 @@ app.delete( '/:id', middelwareAuth.verificaToken, ( req, res )=>{
 })
 
 
+//Obtener un medico por id 
+
+app.get('/:id', (req, res)=>{
+    var id = req.params.id;
+
+    Medico.findById(id).populate('usuario', 'nombre email img google')
+        .populate('hospital').exec((err, medicoCargado)=>{
+             //Ocurrio un error 
+        if (err) {
+            return res.status(500).json({
+                ok:false,
+                mensaje:'Error al tratar de editar el medico',
+                errors: err
+            })
+        } 
+        //No encontro al usuario con ese id
+        if (!medicoCargado) {
+            return res.status(400).json({
+                ok:false,
+                mensaje:'El medico con el id no existe' +id +'No encontrado' ,
+                errors: err
+            });
+        }
+
+        res.status(200).json({
+            ok:true,
+            medico:medicoCargado
+        })
+
+
+        })
+})
+
+
 module.exports = app;

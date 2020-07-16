@@ -17,7 +17,7 @@ app.get('/', (req, res, next)=>{
     desde = Number(desde);
 
 
-    Usuario.find({}, 'nombre email img role')
+    Usuario.find({}, 'nombre email img role google')
     .skip(desde)
     .limit(10).exec( (err, usuarios)=>{
         //Accion que realiza si hay un error en la base de datos al realizar la peticion
@@ -58,7 +58,7 @@ app.get('/', (req, res, next)=>{
 //usamos la libreria bodyparser que nos permite tomar directamente la informacion enviada y
 // evitarnos ese trabajo
 
-app.post('/', middelwareAuth.verificaToken ,(req, res)=>{
+app.post('/', (req, res)=>{
     //leer el body enviado por el metodo post
     var body = req.body;
     //Crear variable modelo para recibir la info 
@@ -80,6 +80,7 @@ app.post('/', middelwareAuth.verificaToken ,(req, res)=>{
             })
         } 
         //respuesta al recurso creado
+        usuario.password = ':)';
         res.status(201).json({
             ok: true,
             body:usuario,

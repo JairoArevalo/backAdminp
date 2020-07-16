@@ -21,7 +21,7 @@ app.get('/',  ( req, res, next )=>{
     var desde = req.query.desde || 0;
     desde = Number(desde);
     Hospital.find({}, 'nombre img usuario').populate('usuario', 'nombre email role')
-    .skip(desde).limit(10)
+    .skip(desde).limit(20)
     .exec( (err, hospitales)=>{
         //Accion que realiza si hay un error en la base de datos al realizar la peticion
         if (err) {
@@ -175,7 +175,34 @@ app.delete( '/:id', middelwareAuth.verificaToken, ( req, res )=>{
     } )
 })
 
+// ==========================================
+// Obtener Hospital por ID
+// ==========================================
+app.get('/:id', (req, res) => {
+    var id = req.params.id;
+    Hospital.findById(id).populate('usuario', 'nombre img email').exec((err, hospital) => {
+    if (err) {
+        return res.status(500).json({
+            ok: false,
+            mensaje: 'Error al buscar hospital',
+            errors: err
+        });
+    }
+    if (!hospital) {
+        return res.status(400).json({
+        ok: false,
+        mensaje: 'El hospital con el id ' + id + 'no existe',
+        errors: { message: 'No existe un hospital con ese ID' }
+        });
+    }
+    res.status(200).json({
+        ok: true,
+        hospital: hospital
+    });
 
+    })
+
+})
 
 
 module.exports = app;

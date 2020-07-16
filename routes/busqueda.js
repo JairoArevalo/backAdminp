@@ -77,7 +77,7 @@ app.get('/coleccion/:tabla/:busqueda', (req, res)=>{
 function BuscarHospitales(busqueda, expresionBusqueda) {
     return new Promise( (resolve, reject)=>{
 
-        Hospital.find( { nombre:expresionBusqueda }).populate('usuario', 'nombre email role')
+        Hospital.find( { nombre:expresionBusqueda }).populate('usuario', 'nombre email role img')
         .exec( (err, hospitales)=>{
             if (err) {
                 reject('Error al cargar hospitales', err);
@@ -97,7 +97,7 @@ function BuscarMedicos(busqueda, expresionBusqueda) {
     return new Promise( (resolve, reject)=>{
 
         Medico.find( { nombre:expresionBusqueda })
-        .populate('usuario', 'nombre email role')
+        .populate('usuario', 'nombre email role img')
         .populate('hospital')
         .exec((err, medicos)=>{
             if (err) {
@@ -117,7 +117,7 @@ function BuscarMedicos(busqueda, expresionBusqueda) {
 function BuscarUsuarios(busqueda, expresionBusqueda) {
     return new Promise( (resolve, reject)=>{
 
-        Usuario.find( {},'nombre email role' ).or( [{nombre: expresionBusqueda}, {email: expresionBusqueda}])
+        Usuario.find( {},'nombre email role google img' ).or( [{nombre: expresionBusqueda}, {email: expresionBusqueda}])
         .exec( (err, usuarios)=>{
             if (err) {
                 reject('Error al cargar usuarios', err)
